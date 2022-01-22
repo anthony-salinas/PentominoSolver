@@ -12,6 +12,9 @@ public class Piece {
     public boolean[][] getDimensions() {
         return dimensions;
     }
+    public void setDimensions(boolean[][] dims){
+        dimensions = dims;
+    }
 
     public int getPieceId(){
         return pieceId;

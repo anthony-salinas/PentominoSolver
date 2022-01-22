@@ -10,9 +10,19 @@ public class GUI extends JFrame implements ActionListener {
     int[][] boardState = new int[ROWS][COLS];
     JPanel[][] cells = new JPanel[ROWS][COLS];
 
+    JMenuBar menu = new JMenuBar();
+
+    JMenu settings = new JMenu("Settings");
+
+    JMenuItem animation = new JMenuItem("Animation");
+    JMenuItem quickSolve = new JMenuItem("Quick Solve");
+    JMenuItem clearBoard = new JMenuItem("Clear Board");
+
     Timer timer = new Timer(1, this);
 
-    // set pentaminoe shapes
+    boolean startAnimation = false, quickSolver = false;
+
+    // set pentamino shapes
     boolean [][] FShape = {{false, true, true}, {true, true, false}, {false, true, false}};
     boolean [][] IShape = {{true}, {true}, {true}, {true}, {true}};
     boolean [][] LShape = {{true, false}, {true, false}, {true, false}, {true, true}};
@@ -37,14 +47,14 @@ public class GUI extends JFrame implements ActionListener {
     Piece VPenta = new Piece("VShape", VShape, 8);
     Piece WPenta = new Piece("WShape", WShape, 9);
     Piece XPenta = new Piece("XShape", XShape, 10);
-    Piece YPenta = new Piece("YShape", YShape, 11); // changed to 9 because 10 looked weird when debugging
+    Piece YPenta = new Piece("YShape", YShape, 11);
     Piece ZPenta = new Piece("ZShape", ZShape, 12);
 
-    Piece[] animationArray = {LPenta, TPenta, YPenta, PPenta, WPenta}; //pieces to be used in animation
+    Piece[] animationArray = {LPenta, VPenta, PPenta, ZPenta, YPenta}; //pieces to be used in animation
 
     //initialize board & set up GUI
     public GUI(){
-        super("Pentominoes");
+        super("Pentomino Solver");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new GridLayout(ROWS,COLS,1,1));
         setSize(500,500);
@@ -52,7 +62,7 @@ public class GUI extends JFrame implements ActionListener {
             for(int j = 0; j < COLS; j++){
                 cells[i][j] = new JPanel();
                 add(cells[i][j]);
-                cells[i][j].setBackground(Color.GRAY);
+                cells[i][j].setBackground(Color.GRAY.brighter());
             }
         }
         for(int i = 0; i < ROWS; i++){
@@ -61,60 +71,101 @@ public class GUI extends JFrame implements ActionListener {
             }
         }
 
-        timer.start(); // start animation
-    }
+        setJMenuBar(menu);
+        menu.add(settings);
 
+        settings.add(animation);
+        settings.add(quickSolve);
+        settings.add(clearBoard);
+
+        animation.addActionListener(this);
+        quickSolve.addActionListener(this);
+        clearBoard.addActionListener(this);
+    }
+    // variables for animation
     boolean backtrack = false;
     boolean validMove;
-    int numMoves = 0;
     int a = 0;
+
     @Override
     public void actionPerformed(ActionEvent e) {
         // using an action event with a timer allows to iterate through the algorithm at a slower speed to create an animation
-        validMove = false;
-        for(int i = animationArray[a].getInsertY(); i < ROWS; i++){
-            for(int j = animationArray[a].getInsertX(); j < COLS; j++){
-                numMoves++;
-                if(backtrack){
-                    backtrack = false;
-                    if(!validMove(animationArray[a], i, j+ 1)){
-                        j = 0 ;
-                        i++;
+        Object source = e.getSource();
+        if(!startAnimation && source == animation && !quickSolver){
+            clearBoard(cells, ROWS, COLS, boardState);
+            startAnimation = true;
+            backtrack = false;
+            a = 0;
+            timer.start();
+        }
+        if(startAnimation){
+            validMove = false;
+            for(int i = animationArray[a].getInsertY(); i < ROWS; i++){
+                for(int j = animationArray[a].getInsertX(); j < COLS; j++){
+                    if(backtrack){
+                        backtrack = false;
+                        if(!validMove(animationArray[a], i, j+ 1)){
+                            j = 0 ;
+                            i++;
+                        }
+                        else
+                            j++;
                     }
-                    else
-                        j++;
+                    if(validMove(animationArray[a], i, j) && noOverlap(animationArray[a], i, j, boardState)){
+                        validMove = true;
+                        insertPiece(i, j, boardState, animationArray[a]);
+                        printBoardState(boardState);///////
+                        System.out.println("---");///////
+                        colorBoard(boardState, cells);
+                        if(isSolved(boardState)){
+                            timer.stop();
+                            startAnimation = false;
+                            resetInsertion(animationArray);
+                            resetDimensions(animationArray);
+                            //System.out.println("Solved!!");
+                        }
+                        a++;
+                        i = ROWS + 1;
+                        j = COLS + 1;
+                    }
                 }
-                if(validMove(animationArray[a], i, j) && noOverlap(animationArray[a], i, j, boardState)){
-                    validMove = true;
-                    insertPiece(i, j, boardState, animationArray[a]);
-                    colorBoard(boardState, cells);
-                    if(isSolved(boardState)){
-                        timer.stop();
-                        //System.out.println("Solved!!");
-                    }
-                    a++;
-                    i = ROWS + 1;
-                    j = COLS + 1;
+            }
+            if(!validMove){
+                animationArray[a].setInsertY(0);
+                animationArray[a].setInsertX(0);
+                if((animationArray[a].getOrientation() >= 0 && animationArray[a].getOrientation() < 3) && !backtrack){ // add && backtrack == false
+                    animationArray[a].rotate();
+                }
+                else if(animationArray[a].getOrientation() == 3 && !backtrack){ // add && backtrack == false
+                    animationArray[a].mirror();
+                }
+                else if((animationArray[a].getOrientation() > 3 && animationArray[a].getOrientation() < 7) && !backtrack) // add && backtrack == false
+                    animationArray[a].rotate();
+                else if(animationArray[a].getOrientation() == 7){ // this means we have exhausted all orientations and no valid move
+                    backtrack = true;
+                    resetOrientation(animationArray[a]);
+                    a--;
+                    removePiece(boardState, animationArray[a]);
                 }
             }
         }
-        if(!validMove){
-            animationArray[a].setInsertY(0);
-            animationArray[a].setInsertX(0);
-            if((animationArray[a].getOrientation() >= 0 && animationArray[a].getOrientation() < 3) && !backtrack){ // add && backtrack == false
-                animationArray[a].rotate();
+        if(source == quickSolve){
+            if(startAnimation){
+                System.out.println("Animation already in progress!");
             }
-            else if(animationArray[a].getOrientation() == 3 && !backtrack){ // add && backtrack == false
-                animationArray[a].mirror();
+
+            else{
+                clearBoard(cells, ROWS, COLS, boardState);
+                colorBoard(boardState, cells);
+                quickSolver = true;
+                fillAlgorithm(animationArray, boardState);
+                colorBoard(boardState, cells);
+                quickSolver = false;
             }
-            else if((animationArray[a].getOrientation() > 3 && animationArray[a].getOrientation() < 7) && !backtrack) // add && backtrack == false
-                animationArray[a].rotate();
-            else if(animationArray[a].getOrientation() == 7){ // this means we have exhausted all orientations and no valid move
-                backtrack = true;
-                resetOrientation(animationArray[a]);
-                a--;
-                removePiece(boardState, animationArray[a]);
-            }
+        }
+        if(source == clearBoard){
+            clearBoard(cells, ROWS, COLS, boardState);
+            colorBoard(boardState, cells);
         }
     }
 
@@ -166,19 +217,19 @@ public class GUI extends JFrame implements ActionListener {
                     board[i][j].setBackground(Color.BLACK);
                 }
                 else if (state[i][j] == 10){
-                    board[i][j].setBackground(Color.GRAY);
+                    board[i][j].setBackground(Color.BLUE.brighter());
                 }
                 else if (state[i][j] == 11){
-                    board[i][j].setBackground(Color.DARK_GRAY);
+                    board[i][j].setBackground(Color.GRAY.darker());
                 }
                 else if (state[i][j] == 12){
-                    board[i][j].setBackground(Color.lightGray);
+                    board[i][j].setBackground(Color.CYAN.darker());
                 }
                 else if (state[i][j] == 13){
                     board[i][j].setBackground(Color.YELLOW);
                 }
                 else
-                    board[i][j].setBackground(Color.WHITE);
+                    board[i][j].setBackground(Color.gray.brighter());
             }
         }
     }
@@ -186,7 +237,7 @@ public class GUI extends JFrame implements ActionListener {
     public void clearBoard(JPanel[][] board, int sizeROW, int sizeCOL, int[][] state){
         for(int i = 0; i < sizeROW; i++){
             for(int j = 0; j < sizeCOL; j++){
-                board[i][j].setBackground(Color.GRAY);
+                board[i][j].setBackground(Color.GRAY.brighter());
                 state[i][j] = 0;
             }
         }
@@ -258,7 +309,6 @@ public void fillAlgorithm(Piece[] pieces, int[][] state){
             validMove = false;
             for(int i = pieces[a].getInsertY(); i < ROWS; i++){
                 for(int j = pieces[a].getInsertX(); j < COLS; j++){
-                    numMoves++;
                     if(backtrack){
                         backtrack = false;
                         if(!validMove(pieces[a], i, j+ 1)){
@@ -272,6 +322,8 @@ public void fillAlgorithm(Piece[] pieces, int[][] state){
                         validMove = true;
                         insertPiece(i, j, state, pieces[a]);
                         if(isSolved(state)){
+                            resetInsertion(animationArray);
+                            resetDimensions(animationArray);
                             return;
                         }
                          a++;
@@ -302,10 +354,45 @@ public void fillAlgorithm(Piece[] pieces, int[][] state){
     }
 }
 
-public  void initOrientations(Piece[] pieces){
-        for(int i = 0; i < pieces.length; i++){
-           resetOrientation(pieces[i]);
-        }
+public  void resetDimensions(Piece[] pieces){
+    for(int i = 0; i <pieces.length; i++){
+        if(pieces[i].getPieceId() == 1)
+            pieces[i].setDimensions(FShape);
+
+        if(pieces[i].getPieceId() == 2)
+            pieces[i].setDimensions(IShape);
+
+        if(pieces[i].getPieceId() == 3)
+            pieces[i].setDimensions(LShape);
+
+        if(pieces[i].getPieceId() == 4)
+            pieces[i].setDimensions(NShape);
+
+        if(pieces[i].getPieceId() == 5)
+            pieces[i].setDimensions(PShape);
+
+        if(pieces[i].getPieceId() == 6)
+            pieces[i].setDimensions(TShape);
+
+        if(pieces[i].getPieceId() == 7)
+            pieces[i].setDimensions(UShape);
+
+        if(pieces[i].getPieceId() == 8)
+            pieces[i].setDimensions(VShape);
+
+        if(pieces[i].getPieceId() == 9)
+            pieces[i].setDimensions(WShape);
+
+        if(pieces[i].getPieceId() == 10)
+            pieces[i].setDimensions(XShape);
+
+        if(pieces[i].getPieceId() == 11)
+            pieces[i].setDimensions(YShape);
+
+        if(pieces[i].getPieceId() == 12)
+            pieces[i].setDimensions(ZShape);
+
+    }
 }
 
 public void resetOrientation(Piece piece){
@@ -321,6 +408,13 @@ public void resetOrientation(Piece piece){
     }
     else // two lines of symmetry
         piece.setOrientation(4);
+}
+
+public void resetInsertion(Piece pieces[]){
+        for(int i = 0; i < pieces.length; i++){
+            pieces[i].setInsertX(0);
+            pieces[i].setInsertY(0);
+        }
 }
 
     public static void main(String[] args){ //driver

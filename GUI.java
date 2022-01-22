@@ -12,7 +12,7 @@ public class GUI extends JFrame implements ActionListener {
 
     JMenuBar menu = new JMenuBar();
 
-    JMenu settings = new JMenu("Settings");
+    JMenu settings = new JMenu("Options");
 
     JMenuItem animation = new JMenuItem("Animation");
     JMenuItem quickSolve = new JMenuItem("Quick Solve");
@@ -114,8 +114,8 @@ public class GUI extends JFrame implements ActionListener {
                     if(validMove(animationArray[a], i, j) && noOverlap(animationArray[a], i, j, boardState)){
                         validMove = true;
                         insertPiece(i, j, boardState, animationArray[a]);
-                        printBoardState(boardState);///////
-                        System.out.println("---");///////
+                        //printBoardState(boardState);
+                        //System.out.println("---");
                         colorBoard(boardState, cells);
                         if(isSolved(boardState)){
                             timer.stop();
@@ -343,7 +343,7 @@ public void fillAlgorithm(Piece[] pieces, int[][] state){
                }
                else if((pieces[a].getOrientation() > 3 && pieces[a].getOrientation() < 7) && !backtrack) // add && backtrack == false
                    pieces[a].rotate();
-               else if(pieces[a].getOrientation() == 7){ // this means we have exhausted all orienations and no valid move
+               else if(pieces[a].getOrientation() == 7){ // this means we have exhausted all orientations and no valid move
                    backtrack = true;
                    resetOrientation(pieces[a]);
                    a--;
